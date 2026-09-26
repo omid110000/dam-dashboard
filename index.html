@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>داشبورد آمار سدهای مخزنی استان</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#f3f6fb; --card:#ffffff; --ink:#132135; --sub:#5b6b82; --line:#e3e9f2;
+    --accent:#1f6feb; --accent2:#0ea5a4; --warn:#e0932b; --danger:#e0523f; --good:#1fa96b;
+    --shadow: 0 8px 24px rgba(20,40,80,0.08);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0f1420; --card:#171d2b; --ink:#eef2f8; --sub:#9aa7bb; --line:#2a3245; --shadow: 0 8px 24px rgba(0,0,0,0.35); }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'Vazirmatn',Tahoma,sans-serif;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1180px;margin:0 auto;padding:20px 16px 48px;}
+  header{background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:20px;padding:26px 22px;color:#fff;box-shadow:var(--shadow);margin-bottom:20px;position:relative;overflow:hidden;}
+  header::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 85% 20%, rgba(255,255,255,0.18), transparent 55%);}
+  header h1{margin:0 0 6px;font-size:1.5rem;font-weight:800;position:relative;}
+  header p{margin:0;opacity:.92;font-size:.92rem;position:relative;}
+  .top-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;position:relative;}
+  header .meta{margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;position:relative;}
+  .chip{background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.3);padding:6px 14px;border-radius:999px;font-size:.8rem;font-weight:600;backdrop-filter:blur(4px);}
+  .refresh-btn{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.95);color:var(--accent);border:none;padding:10px 18px;border-radius:999px;font-family:inherit;font-weight:700;font-size:.85rem;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.15);transition:transform .15s;white-space:nowrap;}
+  .refresh-btn:hover{transform:translateY(-1px);}
+  .refresh-btn:disabled{opacity:1;cursor:pointer;transform:none;}
+  .refresh-btn svg{width:16px;height:16px;transition:transform .5s;}
+  .refresh-btn.spinning svg{animation:spin 1s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  #statusLine{font-size:.75rem;margin-top:8px;opacity:.9;}
+  #statusLine.err{color:#ffe1de;font-weight:700;}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
+  @media (max-width:720px){.kpis{grid-template-columns:repeat(2,1fr);}}
+  .kpi{background:var(--card);border-radius:16px;padding:16px;box-shadow:var(--shadow);border:1px solid var(--line);}
+  .kpi .label{font-size:.78rem;color:var(--sub);font-weight:600;margin-bottom:6px;}
+  .kpi .value{font-size:1.5rem;font-weight:800;}
+  .kpi .sub{font-size:.75rem;color:var(--sub);margin-top:4px;}
+  .up{color:var(--good);} .down{color:var(--danger);}
+  .card{background:var(--card);border-radius:18px;padding:18px;box-shadow:var(--shadow);border:1px solid var(--line);margin-bottom:18px;}
+  .card h2{margin:0 0 4px;font-size:1.05rem;font-weight:700;text-align:center;}
+  .card .desc{color:var(--sub);font-size:.82rem;margin:0 0 14px;text-align:center;}
+  .chart-box{position:relative;width:100%;height:340px;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+  @media (max-width:820px){.grid2{grid-template-columns:1fr;}}
+  table{width:100%;border-collapse:collapse;font-size:.85rem;}
+  thead th{text-align:center;color:var(--sub);font-weight:700;font-size:.78rem;padding:10px 8px;border-bottom:2px solid var(--line);white-space:nowrap;}
+  tbody td{padding:10px 8px;text-align:center;border-bottom:1px solid var(--line);white-space:nowrap;}
+  tbody tr:hover{background:rgba(31,111,235,0.06);}
+  .name-cell{text-align:right;font-weight:600;}
+  .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:.75rem;font-weight:700;}
+  .table-wrap{overflow-x:auto;}
+  .badge.good{background:rgba(31,169,107,0.14);color:var(--good);}
+  .badge.warn{background:rgba(224,147,43,0.16);color:var(--warn);}
+  .badge.bad{background:rgba(224,82,63,0.14);color:var(--danger);}
+  footer{text-align:center;color:var(--sub);font-size:.78rem;margin-top:20px;}
+  .empty-note{color:var(--sub);font-size:.85rem;padding:14px;text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="top-row">
+      <div>
+        <h1>💧 داشبورد آمار سدهای مخزنی استان</h1>
+        <p>آب منطقه‌ای خراسان جنوبی — معاونت حفاظت و بهره‌برداری — مدیریت بهره‌برداری از تأسیسات آبی</p>
+      </div>
+      <button type="button" class="refresh-btn" id="refreshBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+        <span id="refreshLabel">بروزرسانی</span>
+      </button>
+    </div>
+    <div class="meta">
+      <span class="chip" id="damCountChip">🏞️ تعداد سدها: ۸ سد</span>
+      <span class="chip">📏 واحد: میلیون متر مکعب</span>
+    </div>
+    <div id="statusLine"></div>
+  </header>
+
+  <section class="kpis">
+    <div class="kpi"><div class="label">مجموع حجم کل (نرمال)</div><div class="value" id="kpiTotal">-</div><div class="sub">میلیون متر مکعب</div></div>
+    <div class="kpi"><div class="label">مجموع حجم فعلی مخزن</div><div class="value" id="kpiCurrent">-</div><div class="sub">میلیون متر مکعب</div></div>
+    <div class="kpi"><div class="label">درصد پر بودن کلی</div><div class="value" id="kpiFill">-</div><div class="sub">نسبت به حجم نرمال</div></div>
+    <div class="kpi"><div class="label">تغییر نسبت به سال قبل</div><div class="value up" id="kpiChange">-</div><div class="sub">افزایش حجم مخزن</div></div>
+  </section>
+
+  <div class="card">
+    <h2>مقایسه حجم فعلی، حجم نرمال و سال قبل</h2>
+    <p class="desc">مقایسه حجم مخزن هر سد (میلیون متر مکعب) نسبت به ظرفیت کامل و حجم مشابه سال قبل</p>
+    <div class="chart-box"><canvas id="volChart"></canvas></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h2>درصد پر بودن مخزن هر سد</h2>
+      <p class="desc">نسبت حجم فعلی به حجم کل نرمال</p>
+      <div class="chart-box" style="height:300px"><canvas id="fillChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>درصد تغییرات حجم نسبت به سال قبل</h2>
+      <p class="desc">رشد یا افت حجم مخزن (٪)</p>
+      <div class="chart-box" style="height:300px"><canvas id="changeChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>سهم هر سد از ورودی کل از ابتدای سال آبی</h2>
+    <p class="desc" id="inflowDesc">مجموع ورودی: -</p>
+    <div class="chart-box" style="height:320px"><canvas id="inflowChart"></canvas></div>
+  </div>
+
+  <div class="card">
+    <h2>جدول تفصیلی آمار سدها</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>ردیف</th><th>نام سد</th><th>حجم کل (نرمال)</th><th>حجم فعلی</th><th>حجم سال قبل</th><th>تغییرات (٪)</th><th>درصد پر بودن</th><th>ورودی از ابتدای سال</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ================== تنظیمات اتصال به گوگل‌شیت ==================
+// این شناسه مربوط به یک گوگل‌شیت واقعی (نه فایل xlsx) است.
+// از این پس اعداد را در همین شیت ویرایش کنید تا دکمه رفرش آن‌ها را ببیند:
+// https://docs.google.com/spreadsheets/d/1emXQfTk3BAxMSbbBxe3ZPJ2aQhvxGauBiGctzUGSkwo/edit
+const SHEET_ID = "1emXQfTk3BAxMSbbBxe3ZPJ2aQhvxGauBiGctzUGSkwo";
+// =================================================================
+
+let dams = [
+  {name:"سد اسدیه (رزه)", total:24.16, current:6.83, prev:5.00, change:36.60, fill:28.27, inflow:3.5},
+  {name:"سد حاجی‌آباد", total:4.6, current:2.81, prev:2.00, change:40.50, fill:61.09, inflow:2.49},
+  {name:"سد شهید پارسا", total:4.13, current:0.61, prev:0.90, change:-31.89, fill:14.84, inflow:0.21},
+  {name:"سد فرخی قاین", total:8.83, current:6.00, prev:2.79, change:115.05, fill:67.95, inflow:1.03},
+  {name:"سد دره‌بید", total:4.2, current:3.00, prev:0.41, change:631.71, fill:71.43, inflow:0.33},
+  {name:"سد کریت", total:7.57, current:2.00, prev:0.33, change:509.76, fill:26.42, inflow:0.37},
+  {name:"سد نهرین", total:4.86, current:4.00, prev:1.23, change:225.20, fill:82.30, inflow:2.85},
+  {name:"سد سیاهو", total:17.4, current:4.00, prev:null, change:null, fill:22.99, inflow:3.22},
+];
+
+const fmt = n => (n===null||n===undefined||isNaN(n)) ? "-" : n.toLocaleString('fa-IR',{maximumFractionDigits:2});
+let charts = {};
+let sheetUpdateDate = null;
+
+function renderAll(){
+  const sumTotal = dams.reduce((s,d)=>s+(d.total||0),0);
+  const sumCurrent = dams.reduce((s,d)=>s+(d.current||0),0);
+  const sumPrev = dams.reduce((s,d)=>s+(d.prev||0),0);
+  const overallFill = sumTotal ? (sumCurrent/sumTotal*100) : 0;
+  const overallChange = sumPrev ? ((sumCurrent-sumPrev)/sumPrev*100) : null;
+  document.getElementById('kpiTotal').textContent = fmt(sumTotal);
+  document.getElementById('kpiCurrent').textContent = fmt(sumCurrent);
+  document.getElementById('kpiFill').textContent = '٪' + fmt(overallFill);
+  const kpiChangeEl = document.getElementById('kpiChange');
+  if(overallChange===null){ kpiChangeEl.textContent = '-'; }
+  else{
+    kpiChangeEl.textContent = '٪' + (overallChange>=0?'+':'') + fmt(overallChange);
+    kpiChangeEl.className = 'value ' + (overallChange>=0 ? 'up' : 'down');
+  }
+  document.getElementById('damCountChip').textContent = '🏞️ تعداد سدها: ' + fmt(dams.length) + ' سد';
+  const sumInflow = dams.reduce((s,d)=>s+(d.inflow||0),0);
+  document.getElementById('inflowDesc').textContent = 'مجموع ورودی: ' + fmt(sumInflow) + ' میلیون متر مکعب' + (sheetUpdateDate ? '  |  تاریخ بروزرسانی: ' + sheetUpdateDate : '');
+
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = '';
+  dams.forEach((d,i)=>{
+    const badgeClass = d.fill>=40 ? 'good' : d.fill>=15 ? 'warn' : 'bad';
+    const changeStr = (d.change===null||d.change===undefined) ? '-' : (d.change>=0? '+':'') + d.change.toLocaleString('fa-IR',{maximumFractionDigits:2}) + '٪';
+    const changeColor = (d.change===null||d.change===undefined) ? '' : 'style="color:' + (d.change>=0?'var(--good)':'var(--danger)') + ';font-weight:700"';
+    const row = document.createElement('tr');
+    row.innerHTML = `<td>${fmt(i+1)}</td><td class="name-cell">${d.name}</td><td>${fmt(d.total)}</td><td>${fmt(d.current)}</td><td>${fmt(d.prev)}</td><td ${changeColor}>${changeStr}</td><td><span class="badge ${badgeClass}">٪${fmt(d.fill)}</span></td><td>${fmt(d.inflow)}</td>`;
+    tbody.appendChild(row);
+  });
+
+  drawChartsWhenReady();
+}
+
+function loadScriptOnce(url){
+  return new Promise(function(resolve, reject){
+    const s = document.createElement('script');
+    s.src = url;
+    s.onload = function(){ resolve(url); };
+    s.onerror = function(){ reject(new Error('load failed: ' + url)); };
+    document.head.appendChild(s);
+  });
+}
+const CHART_CDN_URLS = [
+  'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js',
+  'https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js'
+];
+async function ensureChart(){
+  if(typeof Chart !== 'undefined') return true;
+  for(const url of CHART_CDN_URLS){
+    try{ await loadScriptOnce(url); if(typeof Chart !== 'undefined') return true; }catch(e){}
+  }
+  return typeof Chart !== 'undefined';
+}
+
+async function drawChartsWhenReady(){
+  const ok = await ensureChart();
+  if(!ok){
+    document.querySelectorAll('.chart-box').forEach(el=>{
+      el.innerHTML = '<div class="empty-note">کتابخانه نمودار در دسترس نیست.</div>';
+    });
+    return;
+  }
+  drawCharts();
+}
+
+function drawCharts(){
+  Object.values(charts).forEach(c => { try{ c.destroy(); }catch(e){} });
+  charts = {};
+  Chart.defaults.font.family = "'Vazirmatn', Tahoma, sans-serif";
+  const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(20,40,80,0.08)';
+  const tickColor = isDark ? '#9aa7bb' : '#5b6b82';
+  Chart.defaults.color = tickColor;
+  const labels = dams.map(d=>d.name);
+
+  charts.vol = new Chart(document.getElementById('volChart'), {
+    type:'bar',
+    data:{ labels, datasets:[
+      {label:'حجم کل (نرمال)', data:dams.map(d=>d.total), backgroundColor:'rgba(31,111,235,0.25)', borderRadius:6},
+      {label:'حجم فعلی', data:dams.map(d=>d.current), backgroundColor:'#1f6feb', borderRadius:6},
+      {label:'حجم سال قبل', data:dams.map(d=>d.prev), backgroundColor:'#0ea5a4', borderRadius:6},
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{position:'bottom', align:'center'} },
+      scales:{ x:{grid:{display:false}, ticks:{autoSkip:false, maxRotation:40, minRotation:20}},
+        y:{grid:{color:gridColor}, title:{display:true,text:'میلیون متر مکعب'}} }
+    }
+  });
+
+  charts.fillC = new Chart(document.getElementById('fillChart'), {
+    type:'bar',
+    data:{ labels, datasets:[{ label:'درصد پر بودن', data:dams.map(d=>d.fill),
+      backgroundColor: dams.map(d=> d.fill>=40 ? '#1fa96b' : d.fill>=15 ? '#e0932b' : '#e0523f'), borderRadius:6 }]},
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{ x:{grid:{color:gridColor}, max:100, ticks:{callback:v=>v+'٪'}}, y:{grid:{display:false}} } }
+  });
+
+  charts.change = new Chart(document.getElementById('changeChart'), {
+    type:'bar',
+    data:{ labels, datasets:[{ label:'تغییرات نسبت به سال قبل', data:dams.map(d=>d.change),
+      backgroundColor: dams.map(d=> (d.change===null||d.change===undefined) ? '#9aa7bb' : d.change>=0 ? '#1fa96b' : '#e0523f'), borderRadius:6 }]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales:{ x:{grid:{display:false}, ticks:{autoSkip:false, maxRotation:40, minRotation:20}},
+        y:{grid:{color:gridColor}, ticks:{callback:v=>v+'٪'}} } }
+  });
+
+  charts.inflow = new Chart(document.getElementById('inflowChart'), {
+    type:'doughnut',
+    data:{ labels, datasets:[{ data:dams.map(d=>d.inflow),
+      backgroundColor:['#1f6feb','#0ea5a4','#1fa96b','#e0932b','#e0523f','#7c5cff','#00b8d9','#ff6b9d'] }]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'right', labels:{boxWidth:14}}} }
+  });
+}
+
+// ================== دریافت زنده از گوگل‌شیت (JSONP، بدون سرور) ==================
+function setStatus(msg, isErr){
+  const el = document.getElementById('statusLine');
+  el.textContent = msg;
+  el.className = isErr ? 'err' : '';
+}
+
+function fetchSheetJSONP(sheetId){
+  return new Promise(function(resolve, reject){
+    const cbName = '__gvizCB_' + Date.now() + '_' + Math.floor(Math.random()*1000000);
+    let done = false;
+    let scriptEl = null;
+
+    function cleanup(){
+      clearTimeout(timeoutId);
+      try { delete window[cbName]; } catch(e) { window[cbName] = undefined; }
+      if(scriptEl && scriptEl.parentNode) scriptEl.parentNode.removeChild(scriptEl);
+    }
+
+    const timeoutId = setTimeout(function(){
+      if(done) return;
+      done = true;
+      cleanup();
+      reject(new Error('پاسخی از گوگل‌شیت دریافت نشد. دسترسی شیت را روی Anyone with the link → Viewer قرار دهید.'));
+    }, 15000);
+
+    // هر بار یک callback کاملاً مستقل ساخته می‌شود؛ بنابراین چند بار کلیک پشت‌سرهم هم مشکلی ایجاد نمی‌کند.
+    window[cbName] = function(response){
+      if(done) return;
+      done = true;
+      cleanup();
+      if(!response || response.status === 'error'){
+        const msg = (response && response.errors && response.errors[0] &&
+          (response.errors[0].detailed_message || response.errors[0].message)) ||
+          'خطای نامشخص از گوگل‌شیت';
+        reject(new Error(msg));
+        return;
+      }
+      resolve(response);
+    };
+
+    const url = 'https://docs.google.com/spreadsheets/d/' + encodeURIComponent(sheetId) +
+      '/gviz/tq?tqx=' + encodeURIComponent('out:json;responseHandler:' + cbName) +
+      '&tq=' + encodeURIComponent('select *') +
+      '&_=' + Date.now();
+
+    scriptEl = document.createElement('script');
+    scriptEl.async = true;
+    scriptEl.src = url;
+    scriptEl.onerror = function(){
+      if(done) return;
+      done = true;
+      cleanup();
+      reject(new Error('اتصال به گوگل‌شیت برقرار نشد. دسترسی شیت را بررسی کنید.'));
+    };
+    document.body.appendChild(scriptEl);
+  });
+}
+
+function parseGvizToDams(response){
+  const table = response.table;
+  if(!table || !table.rows) throw new Error('ساختار پاسخ گوگل‌شیت نامعتبر است');
+
+  // تاریخ بروزرسانی از سلول I1 گوگل‌شیت
+  if(table.rows.length > 0 && table.rows[0].c && table.rows[0].c[8]){
+    const dateCell = table.rows[0].c[8];
+    sheetUpdateDate = (dateCell.f !== undefined && dateCell.f !== null && dateCell.f !== '')
+      ? String(dateCell.f)
+      : (dateCell.v !== undefined && dateCell.v !== null ? String(dateCell.v) : null);
+  }
+
+  const rows = table.rows.map(r => (r.c || []).map(c => c ? c.v : null));
+  const out = [];
+  for(const r of rows){
+    const name = r[1];
+    if(!name || typeof name !== 'string') continue;
+    // ردیف عنوان جدول (مثلاً «نام سد») نباید به‌عنوان سد نمایش داده شود.
+    const cleanName = String(name).trim();
+    if(cleanName === 'نام سد' || cleanName === 'سد' || cleanName === 'نام') continue;
+    if(cleanName.indexOf('جمع') !== -1) break;
+    const num = v => (typeof v === 'number') ? v : (v===null||v===undefined||v==='') ? null : parseFloat(v);
+    out.push({
+      name: cleanName,
+      total: num(r[2]), current: num(r[3]), prev: num(r[4]),
+      change: num(r[5]), fill: num(r[6]), inflow: num(r[7]),
+    });
+  }
+  if(out.length === 0) throw new Error('هیچ ردیف سدی در شیت پیدا نشد');
+  return out;
+}
+
+let refreshRequestId = 0;
+
+async function refreshFromSheet(){
+  const requestId = ++refreshRequestId;
+  const btn = document.getElementById('refreshBtn');
+  const label = document.getElementById('refreshLabel');
+  btn.classList.add('spinning');
+  btn.setAttribute('aria-busy','true');
+  label.textContent = 'در حال دریافت...';
+  setStatus('در حال خواندن آخرین اطلاعات از گوگل‌شیت...', false);
+  try{
+    const response = await fetchSheetJSONP(SHEET_ID);
+    // فقط آخرین درخواست اجازه دارد داده‌های صفحه را تغییر دهد.
+    if(requestId !== refreshRequestId) return;
+    const parsed = parseGvizToDams(response);
+    dams = parsed;
+    renderAll();
+    setStatus('✓ به‌روزرسانی شد — ' + new Date().toLocaleTimeString('fa-IR'), false);
+  }catch(err){
+    if(requestId === refreshRequestId){
+      setStatus('خطا: ' + (err && err.message ? err.message : 'نامشخص'), true);
+      console.error('refreshFromSheet error', err);
+    }
+  }finally{
+    if(requestId === refreshRequestId){
+      btn.classList.remove('spinning');
+      btn.removeAttribute('aria-busy');
+      label.textContent = 'بروزرسانی';
+    }
+  }
+}
+
+renderAll();
+
+// اتصال مستقیم دکمه؛ بدون onclick در HTML تا در Safari/WebView نیز پایدار باشد.
+document.getElementById('refreshBtn').addEventListener('click', function(e){
+  e.preventDefault();
+  refreshFromSheet();
+});
+
+// دریافت خودکار آخرین داده‌ها هنگام باز شدن داشبورد
+window.addEventListener('load', function(){
+  setTimeout(function(){
+    refreshFromSheet();
+  }, 500);
+});
+</script>
+</body>
+</html>
